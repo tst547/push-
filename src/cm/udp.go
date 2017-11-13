@@ -20,6 +20,7 @@ type WinMsg struct {
 }
 type File struct {
 	Name  string
+	Path  string
 	Size  int64
 	IsDir bool
 }

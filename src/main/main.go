@@ -28,6 +28,7 @@ func listFile(w http.ResponseWriter, req *http.Request) {
 		for i, v := range fList {
 			files[i] = cm.File{
 				Name:  v,
+				Path:  v,
 				Size:  0,
 				IsDir: false,
 			}
@@ -48,6 +49,7 @@ func listFile(w http.ResponseWriter, req *http.Request) {
 		for i, v := range osFList {
 			files[i] = cm.File{
 				Name:  v.Name(),
+				Path: filePath,
 				Size:  v.Size(),
 				IsDir: v.IsDir(),
 			}
