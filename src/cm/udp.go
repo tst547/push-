@@ -5,31 +5,28 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strconv"
 )
 
 type Base struct {
-	Err int
-	Msg interface{}
+	Err int         `json:"err"`
+	Msg interface{} `json:"msg"`
 }
 type IpMsg struct {
-	Addr string
-}
-type WinMsg struct {
-	IsReady bool
-	Port    uint8
+	Addr string `json:"addr"`
 }
 type File struct {
-	Name  string
-	Path  string
-	Size  int64
-	IsDir bool
+	Name  string `json:"name"`
+	Path  string `json:"path"`
+	Size  int64  `json:"size"`
+	IsDir bool   `json:"isDir"`
 }
 
 /**
 扫描端口监听
 */
 func ScanPort(scanPort int) {
-	udpAddr, err := net.ResolveUDPAddr("udp", ":"+string(scanPort))
+	udpAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(scanPort))
 	conn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
 		fmt.Println("Error listening", err.Error())

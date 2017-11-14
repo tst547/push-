@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"cm"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -49,7 +48,7 @@ func listFile(w http.ResponseWriter, req *http.Request) {
 		for i, v := range osFList {
 			files[i] = cm.File{
 				Name:  v.Name(),
-				Path: filePath,
+				Path:  filePath,
 				Size:  v.Size(),
 				IsDir: v.IsDir(),
 			}
@@ -65,6 +64,24 @@ func listFile(w http.ResponseWriter, req *http.Request) {
 }
 
 /**
+接收文件
+*/
+func fileRecv(w http.ResponseWriter, req *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+	e := req.ParseForm()
+	checkErr(e, &w)
+	var rm = new(cm.RecvMsg)
+	err := json.Unmarshal([]byte(req.Form.Get("RecvMsg")), rm)
+	checkErr(err, &w)
+	go cm.FileRecv(rm)
+	results, _ := json.Marshal(cm.Base{
+		Err: 0,
+		Msg: "Is connected",
+	})
+	w.Write(results)
+}
+
+/**
 get参数 : filePath 文件路径
 下载指定文件
 */
@@ -74,15 +91,9 @@ func fileDownLoad(w http.ResponseWriter, req *http.Request) {
 	file, err := os.Open(filePath)
 	log.Println(filePath)
 	defer file.Close()
-	if nil != err {
-		fmt.Fprintf(w, err.Error())
-		return
-	}
+	checkErr(err, &w)
 	fileInfo, errs := file.Stat()
-	if nil != errs {
-		fmt.Fprintf(w, errs.Error())
-		return
-	}
+	checkErr(errs, &w)
 	var offset int64 = 0
 	var fileLen = fileInfo.Size()
 	rag := req.Header.Get("Range")
@@ -126,6 +137,7 @@ func fileDownLoad(w http.ResponseWriter, req *http.Request) {
 
 func main() {
 	go cm.ScanPort(22555)
+	http.HandleFunc("/recv", fileRecv)
 	http.HandleFunc("/list", listFile)
 	http.HandleFunc("/fileDL", fileDownLoad)
 	err := http.ListenAndServe(":8888", nil)
@@ -159,4 +171,15 @@ func GetLogicalDrives() []string {
 	}
 	return drives
 
+}
+
+func checkErr(err error, w *http.ResponseWriter) {
+	if nil != err {
+		results, _ := json.Marshal(cm.Base{
+			Err: 1,
+			Msg: err.Error(),
+		})
+		(*w).Write(results)
+		return
+	}
 }
