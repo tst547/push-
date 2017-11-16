@@ -87,7 +87,7 @@ get参数 : filePath 文件路径
 */
 func fileDownLoad(w http.ResponseWriter, req *http.Request) {
 	req.ParseForm()
-	filePath := req.Form.Get("filePath")
+	filePath := req.PostForm.Get("filePath")
 	file, err := os.Open(filePath)
 	log.Println(filePath)
 	defer file.Close()
@@ -135,17 +135,31 @@ func fileDownLoad(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+/**
+连接测试
+ */
+func test(w http.ResponseWriter, req *http.Request) {
+	results, _ := json.Marshal(cm.Base{
+		Err: 0,
+		Msg: "test finish",
+	})
+	w.Write(results)
+}
+
 func main() {
-	go cm.ScanPort(22555)
+	httpPort := 8888
+	go cm.ScanPort(22555,httpPort)
+	http.HandleFunc("/test", test)
 	http.HandleFunc("/recv", fileRecv)
 	http.HandleFunc("/list", listFile)
 	http.HandleFunc("/fileDL", fileDownLoad)
-	err := http.ListenAndServe(":8888", nil)
+	err := http.ListenAndServe(":"+strconv.Itoa(httpPort), nil)
 	if err != nil {
 		log.Println("ListenAndServe: ", err.Error())
 		return
 	}
 }
+
 
 /**
 获取系统盘符

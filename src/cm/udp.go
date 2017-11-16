@@ -14,6 +14,7 @@ type Base struct {
 }
 type IpMsg struct {
 	Addr string `json:"addr"`
+	Port int64  `json:"port"`
 }
 type File struct {
 	Name  string `json:"name"`
@@ -25,7 +26,7 @@ type File struct {
 /**
 扫描端口监听
 */
-func ScanPort(scanPort int) {
+func ScanPort(scanPort int,httpPort int) {
 	udpAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(scanPort))
 	conn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
@@ -34,7 +35,7 @@ func ScanPort(scanPort int) {
 	}
 	defer conn.Close()
 	for {
-		whenRecv(conn)
+		whenRecv(conn,httpPort)
 		log.Println("send Msg finished")
 	}
 }
@@ -51,7 +52,7 @@ func checkError(err error) {
 /**
 当收到扫描消息时的处理
 */
-func whenRecv(conn *net.UDPConn) {
+func whenRecv(conn *net.UDPConn,httpPort int) {
 	baseMsg := new(Base)
 	ipM := new(IpMsg)
 	var buf [255]byte
@@ -62,6 +63,7 @@ func whenRecv(conn *net.UDPConn) {
 
 	log.Println("received msg from :", addr)
 	ipM.Addr = conn.LocalAddr().String()
+	ipM.Port = int64(httpPort)
 	baseMsg.Err = 0
 	baseMsg.Msg = ipM
 	arr, erro := json.Marshal(baseMsg)
