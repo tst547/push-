@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"cm"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -12,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"cm"
 )
 
 /**
@@ -131,6 +131,7 @@ func fileDownLoad(w http.ResponseWriter, req *http.Request) {
 		_, errw := w.Write(data[:n])
 		if nil != errw {
 			log.Println(errw.Error())
+			break
 		}
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"strings"
 )
 
 type Base struct {
@@ -62,7 +63,8 @@ func whenRecv(conn *net.UDPConn,httpPort int) {
 	}
 
 	log.Println("received msg from :", addr)
-	ipM.Addr = conn.LocalAddr().String()
+	remote := addr.IP.String()
+	ipM.Addr = localIp(remote[:strings.LastIndex(remote,".")+1])
 	ipM.Port = int64(httpPort)
 	baseMsg.Err = 0
 	baseMsg.Msg = ipM
@@ -72,4 +74,25 @@ func whenRecv(conn *net.UDPConn,httpPort int) {
 	}
 	_, err = conn.WriteToUDP(arr, addr)
 	checkError(err)
+}
+func localIp(remote string) string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	i := 0
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				if strings.Contains(ipnet.IP.String(),remote){
+					return ipnet.IP.String()
+				}
+				// 检查ip地址判断是否回环地址
+				i++
+			}
+
+		}
+	}
+	return ""
 }
