@@ -13,7 +13,6 @@ type Base struct {
 	Msg interface{} `json:"msg"`
 }
 type IpMsg struct {
-	Addr string `json:"addr"`
 	Port int64  `json:"port"`
 }
 type File struct {
@@ -62,12 +61,12 @@ func whenRecv(conn *net.UDPConn,httpPort int) {
 	}
 
 	log.Println("received msg from :", addr)
-	ipM.Addr = conn.LocalAddr().String()
 	ipM.Port = int64(httpPort)
 	baseMsg.Err = 0
 	baseMsg.Msg = ipM
 	arr, erro := json.Marshal(baseMsg)
 	if nil != erro {
+		baseMsg.Err = 1
 		return
 	}
 	_, err = conn.WriteToUDP(arr, addr)

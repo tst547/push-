@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"fmt"
 )
 
 /**
@@ -29,7 +30,7 @@ func listFile(w http.ResponseWriter, req *http.Request) {
 				Name:  v,
 				Path:  v,
 				Size:  0,
-				IsDir: false,
+				IsDir: true,
 			}
 		}
 		genList := cm.Base{
@@ -38,6 +39,7 @@ func listFile(w http.ResponseWriter, req *http.Request) {
 		}
 		results, _ := json.Marshal(genList)
 		w.Write(results)
+		fmt.Print(string(results))
 		return
 	}
 	f, _ := os.Open(filePath)
@@ -59,6 +61,7 @@ func listFile(w http.ResponseWriter, req *http.Request) {
 		}
 		results, _ := json.Marshal(genList)
 		w.Write(results)
+		fmt.Print(string(results))
 		return
 	}
 }
@@ -78,6 +81,7 @@ func fileRecv(w http.ResponseWriter, req *http.Request) {
 		Err: 0,
 		Msg: "Is connected",
 	})
+	fmt.Print(string(results))
 	w.Write(results)
 }
 
