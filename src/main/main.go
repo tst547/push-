@@ -2,17 +2,19 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"cm"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
-	"fmt"
 )
 
 /**
@@ -28,7 +30,7 @@ func listFile(w http.ResponseWriter, req *http.Request) {
 		for i, v := range fList {
 			files[i] = cm.File{
 				Name:  v,
-				Path:  v,
+				Path:  v+"\\",
 				Size:  0,
 				IsDir: true,
 			}
@@ -48,9 +50,14 @@ func listFile(w http.ResponseWriter, req *http.Request) {
 		osFList, _ := ioutil.ReadDir(filePath)
 		var files [1024]cm.File
 		for i, v := range osFList {
+			bf := bytes.Buffer{}
+			bf.WriteString(filePath)
+			bf.WriteRune(os.PathSeparator)
+			bf.WriteString(v.Name())
+			fl,_ :=filepath.Abs(bf.String())
 			files[i] = cm.File{
 				Name:  v.Name(),
-				Path:  filePath,
+				Path:  fl,
 				Size:  v.Size(),
 				IsDir: v.IsDir(),
 			}
@@ -72,10 +79,10 @@ func listFile(w http.ResponseWriter, req *http.Request) {
 func fileRecv(w http.ResponseWriter, req *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	e := req.ParseForm()
-	checkErr(e, &w)
+	checkErr(e)
 	var rm = new(cm.RecvMsg)
 	err := json.Unmarshal([]byte(req.Form.Get("RecvMsg")), rm)
-	checkErr(err, &w)
+	checkErr(err)
 	go cm.FileRecv(rm)
 	results, _ := json.Marshal(cm.Base{
 		Err: 0,
@@ -95,15 +102,21 @@ func fileDownLoad(w http.ResponseWriter, req *http.Request) {
 	file, err := os.Open(filePath)
 	log.Println(filePath)
 	defer file.Close()
-	checkErr(err, &w)
+	checkErr(err)
 	fileInfo, errs := file.Stat()
-	checkErr(errs, &w)
+	checkErr(errs)
 	var offset int64 = 0
 	var fileLen = fileInfo.Size()
 	rag := req.Header.Get("Range")
-	index := strings.Index(rag, "-")
+	var index int
+	if len(rag) > 0 && strings.Contains(rag, "-") {
+		index, err = strconv.Atoi(rag[:strings.Index(rag, "-")])
+		checkErr(err)
+	} else {
+		index = -1
+	}
 	log.Println(index)
-	switch index {
+	switch strings.Index(rag, "-") {
 	case 0:
 		r, _ := strconv.ParseInt(rag, 10, 64)
 		offset = fileLen + r
@@ -112,6 +125,7 @@ func fileDownLoad(w http.ResponseWriter, req *http.Request) {
 			10, 64)
 		offset = r
 	case -1:
+		offset = 0
 	default:
 		strSlice := strings.Split(rag, "-")[1:]
 		offset, _ = strconv.ParseInt(strSlice[0], 10, 64)
@@ -135,13 +149,14 @@ func fileDownLoad(w http.ResponseWriter, req *http.Request) {
 		_, errw := w.Write(data[:n])
 		if nil != errw {
 			log.Println(errw.Error())
+			return
 		}
 	}
 }
 
 /**
 连接测试
- */
+*/
 func test(w http.ResponseWriter, req *http.Request) {
 	results, _ := json.Marshal(cm.Base{
 		Err: 0,
@@ -152,8 +167,9 @@ func test(w http.ResponseWriter, req *http.Request) {
 
 func main() {
 	httpPort := 8888
-	go cm.ScanPort(22555,httpPort)
+	go cm.ScanPort(22555, httpPort)
 	http.HandleFunc("/test", test)
+	http.HandleFunc("/video", video)
 	http.HandleFunc("/recv", fileRecv)
 	http.HandleFunc("/list", listFile)
 	http.HandleFunc("/fileDL", fileDownLoad)
@@ -163,7 +179,12 @@ func main() {
 		return
 	}
 }
-
+func video(w http.ResponseWriter, req *http.Request) {
+	req.ParseForm()
+	filePath := req.Form.Get("filePath")
+	fmt.Print(filePath)
+	http.ServeFile(w,req,filePath)
+}
 
 /**
 获取系统盘符
@@ -191,13 +212,8 @@ func GetLogicalDrives() []string {
 
 }
 
-func checkErr(err error, w *http.ResponseWriter) {
+func checkErr(err error) {
 	if nil != err {
-		results, _ := json.Marshal(cm.Base{
-			Err: 1,
-			Msg: err.Error(),
-		})
-		(*w).Write(results)
 		return
 	}
 }
