@@ -59,7 +59,6 @@ func whenRecv(conn *net.UDPConn,httpPort int) {
 	if nil != err {
 		return
 	}
-
 	log.Println("received msg from :", addr)
 	ipM.Port = int64(httpPort)
 	baseMsg.Err = 0
@@ -69,6 +68,7 @@ func whenRecv(conn *net.UDPConn,httpPort int) {
 		baseMsg.Err = 1
 		return
 	}
-	_, err = conn.WriteToUDP(arr, addr)
+	udpAddr, err := net.ResolveUDPAddr("udp", (net.IP)(addr.IP).String()+":"+strconv.Itoa(22455))
+	_, err = conn.WriteToUDP(arr, udpAddr)
 	checkError(err)
 }
