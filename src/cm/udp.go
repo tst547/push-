@@ -15,7 +15,7 @@ type Base struct {
 type IpMsg struct {
 	Port int64  `json:"port"`
 }
-type File struct {
+type FileMsg struct {
 	Name  string `json:"name"`
 	Path  string `json:"path"`
 	Size  int64  `json:"size"`

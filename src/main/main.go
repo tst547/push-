@@ -1,21 +1,34 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"cm"
 	"encoding/json"
-	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"syscall"
 )
+
+/**
+开启服务
+ */
+func startServ()  {
+	httpPort := 8888
+	go cm.ScanPort(22555, httpPort)
+	http.HandleFunc("/test", test)
+	http.HandleFunc("/fileIO", fileIO)
+	http.HandleFunc("/recv", fileRecv)
+	http.HandleFunc("/list", listFile)
+	err := http.ListenAndServe(":"+strconv.Itoa(httpPort), nil)
+	if err != nil {
+		log.Println("ListenAndServe: ", err.Error())
+		return
+	}
+}
 
 /**
 列表文件信息
@@ -26,9 +39,9 @@ func listFile(w http.ResponseWriter, req *http.Request) {
 	filePath := req.Form.Get("filePath")
 	if filePath == "" {
 		fList := GetLogicalDrives()
-		var files [20]cm.File
+		var files [20]cm.FileMsg
 		for i, v := range fList {
-			files[i] = cm.File{
+			files[i] = cm.FileMsg{
 				Name:  v,
 				Path:  v+"\\",
 				Size:  0,
@@ -41,21 +54,20 @@ func listFile(w http.ResponseWriter, req *http.Request) {
 		}
 		results, _ := json.Marshal(genList)
 		w.Write(results)
-		fmt.Print(string(results))
 		return
 	}
 	f, _ := os.Open(filePath)
 	fInfo, _ := f.Stat()
 	if fInfo.IsDir() {
 		osFList, _ := ioutil.ReadDir(filePath)
-		var files [1024]cm.File
+		var files [1024]cm.FileMsg
 		for i, v := range osFList {
 			bf := bytes.Buffer{}
 			bf.WriteString(filePath)
 			bf.WriteRune(os.PathSeparator)
 			bf.WriteString(v.Name())
 			fl,_ :=filepath.Abs(bf.String())
-			files[i] = cm.File{
+			files[i] = cm.FileMsg{
 				Name:  v.Name(),
 				Path:  fl,
 				Size:  v.Size(),
@@ -68,7 +80,6 @@ func listFile(w http.ResponseWriter, req *http.Request) {
 		}
 		results, _ := json.Marshal(genList)
 		w.Write(results)
-		fmt.Print(string(results))
 		return
 	}
 }
@@ -88,70 +99,7 @@ func fileRecv(w http.ResponseWriter, req *http.Request) {
 		Err: 0,
 		Msg: "Is connected",
 	})
-	fmt.Print(string(results))
 	w.Write(results)
-}
-
-/**
-get参数 : filePath 文件路径
-下载指定文件
-*/
-func fileDownLoad(w http.ResponseWriter, req *http.Request) {
-	req.ParseForm()
-	filePath := req.PostForm.Get("filePath")
-	file, err := os.Open(filePath)
-	log.Println(filePath)
-	defer file.Close()
-	checkErr(err)
-	fileInfo, errs := file.Stat()
-	checkErr(errs)
-	var offset int64 = 0
-	var fileLen = fileInfo.Size()
-	rag := req.Header.Get("Range")
-	var index int
-	if len(rag) > 0 && strings.Contains(rag, "-") {
-		index, err = strconv.Atoi(rag[:strings.Index(rag, "-")])
-		checkErr(err)
-	} else {
-		index = -1
-	}
-	log.Println(index)
-	switch strings.Index(rag, "-") {
-	case 0:
-		r, _ := strconv.ParseInt(rag, 10, 64)
-		offset = fileLen + r
-	case len(rag) - 1:
-		r, _ := strconv.ParseInt(strings.Replace(rag, "-", "", -1),
-			10, 64)
-		offset = r
-	case -1:
-		offset = 0
-	default:
-		strSlice := strings.Split(rag, "-")[1:]
-		offset, _ = strconv.ParseInt(strSlice[0], 10, 64)
-		fileLen, _ = strconv.ParseInt(strSlice[1], 10, 64)
-	}
-	w.Header().Add("Accept-Ranges", "bytes")
-	w.Header().Add("Content-disposition", "attachment;filename="+fileInfo.Name())
-	w.Header().Add("Content-Length", strconv.FormatInt(fileLen-offset, 10))
-	file.Seek(offset, 0)
-	bfRd := bufio.NewReader(file)
-	for {
-		data := make([]byte, 1024*128)
-		n, err := bfRd.Read(data)
-		if nil != err && err != io.EOF {
-			log.Println(err.Error())
-			return
-		}
-		if nil != err || n == 0 {
-			break
-		}
-		_, errw := w.Write(data[:n])
-		if nil != errw {
-			log.Println(errw.Error())
-			return
-		}
-	}
 }
 
 /**
@@ -166,23 +114,15 @@ func test(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	httpPort := 8888
-	go cm.ScanPort(22555, httpPort)
-	http.HandleFunc("/test", test)
-	http.HandleFunc("/video", video)
-	http.HandleFunc("/recv", fileRecv)
-	http.HandleFunc("/list", listFile)
-	http.HandleFunc("/fileDL", fileDownLoad)
-	err := http.ListenAndServe(":"+strconv.Itoa(httpPort), nil)
-	if err != nil {
-		log.Println("ListenAndServe: ", err.Error())
-		return
-	}
+	startServ()
 }
-func video(w http.ResponseWriter, req *http.Request) {
+
+/**
+文件流
+ */
+func fileIO(w http.ResponseWriter, req *http.Request) {
 	req.ParseForm()
 	filePath := req.Form.Get("filePath")
-	fmt.Print(filePath)
 	http.ServeFile(w,req,filePath)
 }
 
