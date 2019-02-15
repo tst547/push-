@@ -2,7 +2,6 @@ package cm
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net"
 	"strconv"
@@ -13,7 +12,7 @@ type Base struct {
 	Msg interface{} `json:"msg"`
 }
 type IpMsg struct {
-	Port int64  `json:"port"`
+	Port int64 `json:"port"`
 }
 type FileMsg struct {
 	Name  string `json:"name"`
@@ -25,16 +24,16 @@ type FileMsg struct {
 /**
 扫描端口监听
 */
-func ScanPort(scanPort int,httpPort int) {
+func ScanPort(scanPort int, httpPort int) {
 	udpAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(scanPort))
 	conn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
-		fmt.Println("Error listening", err.Error())
+		log.Println("Error listening", err.Error())
 		return //终止程序
 	}
 	defer conn.Close()
 	for {
-		whenRecv(conn,httpPort)
+		whenRecv(conn, httpPort)
 		log.Println("send Msg finished")
 	}
 }
@@ -51,7 +50,7 @@ func checkError(err error) {
 /**
 当收到扫描消息时的处理
 */
-func whenRecv(conn *net.UDPConn,httpPort int) {
+func whenRecv(conn *net.UDPConn, httpPort int) {
 	baseMsg := new(Base)
 	ipM := new(IpMsg)
 	var buf [255]byte
